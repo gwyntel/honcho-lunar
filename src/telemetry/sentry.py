@@ -25,12 +25,35 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# Exceptions raised while tearing down are caused by the shutdown -- in-flight
+# queries and requests fail as their connections close -- not by a defect.
+# A module-level flag rather than per-call-site checks: capture_exception is
+# called from several modules, and before_send covers every one of them.
+#
+# Set only from a process-level signal handler. An ASGI lifespan shutdown is not
+# equivalent: an app can be started and stopped without the process exiting, and
+# this flag is deliberately one-way.
+_shutting_down = False
+
+
+def mark_shutting_down() -> None:
+    """Stop reporting to Sentry for the rest of the process's life.
+
+    Call synchronously from a signal handler; deferring to the event loop leaves
+    a window in which teardown exceptions are still reported.
+    """
+    global _shutting_down
+    _shutting_down = True
+
 
 def default_before_send(event: Event, hint: Hint | None) -> Event | None:
     """Filter/regroup known non-actionable events before Sentry ingests them.
 
     Shared by every entrypoint (API + deriver) so filtering is process-agnostic.
     """
+    if _shutting_down:
+        return None
+
     if not hint:
         return event
 

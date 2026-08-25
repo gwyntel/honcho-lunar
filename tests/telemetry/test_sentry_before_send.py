@@ -6,7 +6,7 @@ into a single warning-level issue so they stop spawning a fresh error issue per
 transaction (fleet-wide saturation symptom, tracked in DEV-1852).
 """
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 import sentry_sdk
@@ -80,3 +80,82 @@ def test_initialize_sentry_explicit_none_bypasses_shared_filter(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     assert _captured_before_send(monkeypatch, before_send=None) is None
+
+
+class TestShutdownSuppression:
+    """Teardown failures are expected, not defects, and their volume scales with
+    how often the process restarts."""
+
+    @pytest.fixture(autouse=True)
+    def _reset(self):
+        import src.telemetry.sentry as sentry_module
+
+        original = sentry_module._shutting_down  # pyright: ignore[reportPrivateUsage]
+        yield
+        sentry_module._shutting_down = original  # pyright: ignore[reportPrivateUsage]
+
+    def test_events_dropped_after_shutdown(self):
+        from src.telemetry.sentry import mark_shutting_down
+
+        exc = OperationalError("SELECT 1", {}, Exception("boom"))
+        assert default_before_send(_event(), _hint(exc)) is not None
+
+        mark_shutting_down()
+
+        assert default_before_send(_event(), _hint(exc)) is None
+
+    def test_events_without_exc_info_also_dropped(self):
+        """capture_message and the logging integration carry no exc_info."""
+        from src.telemetry.sentry import mark_shutting_down
+
+        assert default_before_send(_event(), None) is not None
+        mark_shutting_down()
+        assert default_before_send(_event(), None) is None
+
+    def test_logging_integration_events_are_also_dropped(self):
+        """logger.error() raises its own event, separate from capture_exception.
+
+        Teardown paths log before they capture, so filtering only the explicit
+        capture would let the logged copy through.
+        """
+        import logging
+
+        import sentry_sdk
+        from sentry_sdk.transport import Transport
+
+        from src.telemetry.sentry import mark_shutting_down
+
+        sent: list[str] = []
+
+        class RecordingTransport(Transport):
+            def capture_envelope(self, envelope: Any) -> None:
+                sent.extend(item.type for item in envelope.items)
+
+        sentry_sdk.init(
+            dsn="https://public@example.ingest.sentry.io/1",
+            before_send=default_before_send,
+            transport=RecordingTransport(),
+        )
+        log = logging.getLogger("test_shutdown_suppression")
+
+        def log_an_error() -> None:
+            try:
+                raise RuntimeError("connection reset during query")
+            except RuntimeError:
+                log.error("query failed", exc_info=True)
+
+        log_an_error()
+        sentry_sdk.flush()
+        assert "event" in sent, "sanity: ERROR logs reach Sentry normally"
+
+        sent.clear()
+        mark_shutting_down()
+
+        log_an_error()
+        try:
+            raise RuntimeError("boom")
+        except RuntimeError as exc:
+            sentry_sdk.capture_exception(exc)
+        sentry_sdk.flush()
+
+        assert "event" not in sent, "logged and captured copies are both dropped"

@@ -42,7 +42,7 @@ from src.reconciler import (
 )
 from src.schemas import ResolvedConfiguration
 from src.telemetry import prometheus_metrics
-from src.telemetry.sentry import initialize_sentry
+from src.telemetry.sentry import initialize_sentry, mark_shutting_down
 from src.utils.work_unit import parse_work_unit_key
 from src.webhooks.events import (
     QueueEmptyEvent,
@@ -204,9 +204,7 @@ class QueueManager:
         loop = asyncio.get_running_loop()
         signals = (signal.SIGTERM, signal.SIGINT)
         for sig in signals:
-            loop.add_signal_handler(
-                sig, lambda s=sig: asyncio.create_task(self.shutdown(s))
-            )
+            loop.add_signal_handler(sig, self._on_termination_signal, sig)
         logger.debug("Signal handlers registered")
 
         # Start the reconciler scheduler
@@ -222,6 +220,15 @@ class QueueManager:
             await self.polling_loop()
         finally:
             await self.cleanup()
+
+    def _on_termination_signal(self, sig: signal.Signals) -> None:
+        """Flip Sentry suppression, then schedule shutdown.
+
+        Suppression is set here rather than in shutdown() because shutdown() is
+        a task: anything raised before it is scheduled would still be reported.
+        """
+        mark_shutting_down()
+        _ = asyncio.create_task(self.shutdown(sig))
 
     async def shutdown(self, sig: signal.Signals) -> None:
         """Handle graceful shutdown"""
