@@ -6,6 +6,9 @@ allowed-tools: Bash(honcho:*), Bash(jq:*), Read, Grep
 
 # Honcho CLI
 
+## Host portability
+This skill requires the `honcho` executable (and optionally `jq`) to be installed and configured in the current environment. The YAML `allowed-tools` field is host-specific; agents that do not implement it should apply their own least-privilege policy and use only available terminal/file-reading capabilities. If no shell or CLI exists, do not claim to have inspected or changed Honcho; provide the relevant commands for the user instead. Never assume a Hermes tool, environment, or filesystem path.
+
 `honcho` wraps the Honcho Python SDK with agent-friendly defaults: JSON output, structured errors, input validation. Use it to inspect workspace state, debug peer memory, and diagnose the dialectic.
 
 ## Output & config

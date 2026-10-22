@@ -6,6 +6,9 @@ allowed-tools: Read, Glob, Grep, Bash(uv:*), Bash(bun:*), Bash(npm:*), Edit, Wri
 
 # Honcho Integration Guide
 
+## Host portability
+This is implementation guidance, not an installed integration: it does not expose tools or automatically persist memory. The `allowed-tools` frontmatter is advisory and host-specific. Use the current environment's available code-reading/editing/build capabilities and honor its authorization model; do not assume a Hermes tool/path or claim a connected Honcho service unless verified. Resolve `references/...` relative to this skill directory. If an integration pattern depends on a framework or tool absent from the project, state the prerequisite rather than inventing an adapter.
+
 ## What is Honcho
 
 Honcho is an open source memory library for building stateful agents. It works with any model, framework, or architecture. You send Honcho the messages from your conversations, and custom reasoning models process them in the background — extracting premises, drawing conclusions, and building rich representations of each participant over time. Your agent can then query those representations on-demand ("What does this user care about?", "How technical is this person?") and get grounded, reasoned answers.

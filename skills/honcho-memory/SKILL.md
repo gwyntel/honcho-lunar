@@ -5,6 +5,9 @@ description: Concepts and strategy for using a connected Honcho as persistent me
 
 # Using Honcho as Memory
 
+## Agent portability and memory boundaries
+This skill describes Honcho concepts and workflows; it does not itself connect a client, expose tools, or record conversations. Integrations are host-specific: use a supported integration only when installed and authorized, otherwise use an available/configured MCP or CLI path. Hermes-specific Honcho tools are not universal; do not invoke or promise them in other hosts. If no path is available, explain the setup requirement and continue without claiming memory was read or saved. Resolve any bundled reference paths relative to this skill's installed directory, not the process working directory. Follow the user's consent, workspace/peer scoping, and data-retention expectations; never store a message merely because this skill recommends a record loop.
+
 Honcho is a memory layer for agents. You feed it the messages from your conversations; in the background it reasons over them and builds a **representation** of each participant. At any point you can ask it natural-language questions about the user ("How technical are they?", "What are they trying to do?") and get grounded, reasoned answers.
 
 This skill is for when Honcho is **already connected** to you and you want to use it. If you're instead adding Honcho to a codebase from scratch, use the `honcho-integration` skill.
