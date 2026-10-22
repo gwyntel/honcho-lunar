@@ -218,15 +218,31 @@ hermes memory setup   # select "honcho", point at api.honcho.dev or your local s
 
 Details: [Hermes guide](https://honcho.dev/docs/v3/guides/integrations/hermes).
 
-### Add Honcho to your own codebase (agent skill)
+### Agent skills
 
-For wiring the Honcho SDK into an existing application, install the integration skill — it explores your codebase, asks about integration preferences, generates the SDK setup, and verifies it works:
+This repository publishes five reusable skills in [`skills/`](./skills): `honcho-cli` (inspect and debug a deployment), `honcho-integration` (add Honcho to a codebase), `honcho-memory` (use a connected Honcho for persistent memory), `pre-pr` (prepare a Honcho contribution for review), and `verify` (run a local Honcho stack for runtime verification). The separate [`examples/zo/SKILL.md`](./examples/zo/SKILL.md) is an example integration, not part of this catalog.
+
+Install all catalog skills for Hermes Agent:
 
 ```bash
-npx skills add plastic-labs/honcho
+npx skills add gwyntel/honcho-lunar --agent hermes-agent -g -y
 ```
 
-Then invoke `/honcho-integration` in Claude Code (or `/honcho-dev:integrate` via the plugin marketplace). The same command also installs the memory skills — `honcho-memory` (concepts: the recall/record loop, session and peer strategy, plus how to connect and drive an MCP-connected Honcho) and `honcho-cli` (inspecting and debugging a deployment). Details: [agentic development guide](https://honcho.dev/docs/v3/documentation/introduction/vibecoding).
+Or install a selected skill (replace the name as needed):
+
+```bash
+npx skills add gwyntel/honcho-lunar --skill honcho-integration --agent hermes-agent -g -y
+```
+
+For Claude Code, substitute `claude-code` for `hermes-agent`. After installation, invoke the skill by its name (for example, `/honcho-integration`); follow its prerequisites and instructions. To update installed skills, run `npx skills update -g -y` (or `npx skills update <skill-name> -g -y` for one skill).
+
+Troubleshooting: if the CLI does not list a skill, check that its directory is under `skills/` and its `SKILL.md` begins with valid YAML frontmatter containing `name` and `description`; use the exact catalog name with `--skill`. If installation targets the wrong client or scope, set `--agent` and `-g` explicitly. If global writes fail, check permissions for the selected agent's skill directory or retry in a project without `-g`. The CLI needs Node.js/npm and network access to GitHub. Details: [agentic development guide](https://honcho.dev/docs/v3/documentation/introduction/vibecoding).
+
+This repository is the canonical source for these skills. The commands above use the Vercel `skills` CLI; Hermes's native `hermes skills install` is a separate mechanism.
+
+### Add Honcho to your own codebase (agent skill)
+
+For wiring the Honcho SDK into an existing application, install `honcho-integration` as described above, then invoke `/honcho-integration` (or `/honcho-dev:integrate` via the plugin marketplace). The [agentic development guide](https://honcho.dev/docs/v3/documentation/introduction/vibecoding) has more detail.
 
 ### Other MCP clients
 
